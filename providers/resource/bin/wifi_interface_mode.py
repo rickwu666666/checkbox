@@ -6,13 +6,20 @@ from typing import List, Tuple, Dict
 
 def get_interfaces() -> List[Tuple[str, str]]:
     output = check_output(["iw", "dev"], universal_newlines=True)
-    device_pattern = r"phy#(\d+).*?Interface (\S+)"
+    device_pattern = r"(phy#\d+.*?)(?=phy#|\Z)"
+    interface_pattern = r"Interface (\S+).*?type (\S+)"
+
     if output:
-        matches = re.findall(device_pattern, output, re.DOTALL)
-        return [
-            (device_id, interface_name)
-            for device_id, interface_name in matches
-        ]
+        device_blocks = re.findall(device_pattern, output, re.DOTALL)
+        managed_interfaces = []
+        for device_block in device_blocks:
+            device_id = re.search(r"phy#(\d+)", device_block).group(1)
+            interfaces = re.findall(interface_pattern, device_block, re.DOTALL)
+            for interface_name, interface_type in interfaces:
+                if interface_type == "managed":
+                    managed_interfaces.append((device_id, interface_name))
+
+        return managed_interfaces
     raise SystemExit(0)
 
 
